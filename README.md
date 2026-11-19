@@ -2,6 +2,10 @@
 
 > Automated compliance monitoring, OCR renewals, and escalating alerts for SMB trade crews and field service teams.
 
+> [!WARNING]
+> **Project Status — Work in Progress (Not Fully Ready)**
+> This project is currently under active development and is **not fully ready for production**. Some parts, features, or workflow steps will fail or behave unexpectedly. We are actively working on fixing all remaining issues.
+
 Live Production URL: [https://certpulse-one.vercel.app](https://certpulse-one.vercel.app)
 
 ---

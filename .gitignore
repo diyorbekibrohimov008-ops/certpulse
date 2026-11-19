@@ -6,3 +6,11 @@ dist
 coverage
 .env*
 !.env.example
+
+# Secrets, environment variables, and deploy state
+.env
+.env.*
+*.env
+.netlify
+*.pem
+*.key
