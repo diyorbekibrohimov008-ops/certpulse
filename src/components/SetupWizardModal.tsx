@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, CheckCircle2, Clock, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, X } from "lucide-react";
 import { buildSampleSpreadsheetTsv } from "../lib/seed";
 
 interface SetupWizardModalProps {
@@ -21,10 +21,18 @@ export function SetupWizardModal({
   const [step, setStep] = useState<1 | 2>(1);
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("Electrical & Field Service");
-  const [billingEmail, setBillingEmail] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [spreadsheetText, setSpreadsheetText] = useState(() => buildSampleSpreadsheetTsv());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   async function handleFinish(e: React.FormEvent) {
     e.preventDefault();
@@ -38,13 +46,13 @@ export function SetupWizardModal({
       await onCompleteSetup({
         companyName,
         industry,
-        billingEmail,
+        billingEmail: adminEmail,
         spreadsheetText: spreadsheetText.trim() || undefined,
         setupDurationSeconds: elapsedSeconds,
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to launch workspace.");
+      setError(err instanceof Error ? err.message : "Failed to create company workspace.");
     } finally {
       setBusy(false);
     }
@@ -56,25 +64,25 @@ export function SetupWizardModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+        className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Zero Sales Calls · 5-Minute Self-Serve Setup</span>
-            </div>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">
-              Launch a New Company Compliance Workspace
+            <span className="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800">
+              Step {step} of 2
+            </span>
+            <h2 className="mt-2 text-lg font-bold text-slate-950">
+              Create a company workspace
             </h2>
             <p className="text-xs text-slate-500">
-              Skip the $3,000+ enterprise onboarding fees. Go live with 60/30/7-day alerts right away.
+              100% free forever with unlimited employees, photo card scanning, and automatic reminders.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close setup modal"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
           >
             <X className="h-4 w-4" />
@@ -86,7 +94,7 @@ export function SetupWizardModal({
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Company Name *
+                  Company name *
                   <input
                     required
                     value={companyName}
@@ -96,7 +104,7 @@ export function SetupWizardModal({
                   />
                 </label>
                 <label className="block text-xs font-semibold text-slate-700">
-                  Industry / Trade
+                  Trade / Industry
                   <input
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
@@ -106,34 +114,31 @@ export function SetupWizardModal({
               </div>
 
               <label className="block text-xs font-semibold text-slate-700">
-                Admin / Billing Email *
+                Safety admin email *
                 <input
                   required
                   type="email"
-                  value={billingEmail}
-                  onChange={(e) => setBillingEmail(e.target.value)}
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="safety@apexroofing.com"
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 />
               </label>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-                <div className="flex items-center gap-2 font-semibold text-slate-900">
-                  <Sparkles className="h-4 w-4 text-blue-600" />
-                  <span>Pre-Configured Out of the Box</span>
-                </div>
-                <ul className="mt-2 space-y-1">
+              <div className="rounded-xl border border-slate-200 bg-[#f7f8fa] p-4 text-xs text-slate-600">
+                <p className="font-semibold text-slate-900">Included automatically</p>
+                <ul className="mt-2 space-y-1.5">
                   <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>60, 30, and 7-day automated SMS + Email alerts to workers & supervisors</span>
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#0f766e]" />
+                    <span>60, 30, and 7-day automatic reminders for workers and supervisors</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Dedicated mobile MMS photo upload links & OCR card date extraction</span>
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#0f766e]" />
+                    <span>Mobile photo upload links that read card expiry dates automatically</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>$29/mo flat up to 25 employees (14-day free self-serve trial)</span>
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#0f766e]" />
+                    <span>Unlimited employees and cards — $0/mo forever</span>
                   </li>
                 </ul>
               </div>
@@ -142,18 +147,17 @@ export function SetupWizardModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700"
+                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  disabled={!companyName.trim() || !billingEmail.trim()}
+                  disabled={!companyName.trim() || !adminEmail.trim()}
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+                  className="rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
                 >
-                  <span>Next: Import Crew Roster</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  Next: Add team list
                 </button>
               </div>
             </>
@@ -162,21 +166,21 @@ export function SetupWizardModal({
               <div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-800">
-                    Step 2 of 2: Paste Existing Excel Roster (Optional)
+                    Paste your existing spreadsheet (optional)
                   </span>
                   <button
                     type="button"
                     onClick={() => setSpreadsheetText("")}
                     className="text-xs font-medium text-slate-500 hover:underline"
                   >
-                    Start Empty Instead
+                    Start empty instead
                   </button>
                 </div>
                 <textarea
                   rows={6}
                   value={spreadsheetText}
                   onChange={(e) => setSpreadsheetText(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-800"
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-[#f7f8fa] p-3 font-mono text-xs text-slate-800"
                 />
               </div>
 
@@ -190,16 +194,16 @@ export function SetupWizardModal({
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700"
+                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+                  className="rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
                 >
-                  {busy ? "Creating Workspace…" : "Finish & Launch Workspace"}
+                  {busy ? "Creating…" : "Create workspace"}
                 </button>
               </div>
             </>

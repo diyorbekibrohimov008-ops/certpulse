@@ -197,26 +197,6 @@ export const apiClient = {
       { method: "POST" },
     ),
 
-  checkoutPlan: (
-    slug: string,
-    input: {
-      planId: "smb_25" | "smb_growth_50";
-      billingEmail: string;
-      cardNumber: string;
-      cardBrand?: string;
-      expiry?: string;
-      cvc?: string;
-    },
-  ) =>
-    requestJson<WorkspacePayload>(
-      `/api/workspaces/${encodeURIComponent(slug)}/billing/checkout`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      },
-    ),
-
   getMobilePortal: (token: string) =>
     requestJson<{
       workspaceSlug: string;

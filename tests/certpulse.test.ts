@@ -121,7 +121,7 @@ describe("60/30/7 escalating worker + supervisor notifications & deduplication",
   });
 });
 
-describe("End-to-end Hono API & SMB 25-seat limit", () => {
+describe("End-to-end Hono API & unlimited free seats", () => {
   beforeEach(() => {
     setStorageOverride(new MemoryStorageAdapter());
     process.env.CRON_SECRET = "test_cron_secret_123456";
@@ -131,7 +131,7 @@ describe("End-to-end Hono API & SMB 25-seat limit", () => {
     delete process.env.OPENAI_API_KEY;
   });
 
-  it("seeds default workspace, enforces 25-seat limit, upgrades plan, and processes MMS photo upload", async () => {
+  it("seeds default workspace, allows unlimited employees for free, validates inputs, and processes MMS photo upload", async () => {
     const healthRes = await app.fetch(new Request("http://localhost/api/health"));
     expect(healthRes.status).toBe(200);
     const healthJson = (await healthRes.json()) as { storageDriver: string };
@@ -201,7 +201,7 @@ describe("End-to-end Hono API & SMB 25-seat limit", () => {
     expect(twiml).toContain("<Response><Message>");
     expect(twiml).toContain("2029-12-01");
 
-    // Create fresh workspace & test 25-seat SMB cap + self-serve upgrade
+    // Create fresh workspace & verify free unlimited seats (no paywall on 26th employee)
     const createRes = await app.fetch(
       new Request("http://localhost/api/workspaces", {
         method: "POST",
@@ -215,10 +215,15 @@ describe("End-to-end Hono API & SMB 25-seat limit", () => {
     );
     expect(createRes.status).toBe(201);
     const createdJson = (await createRes.json()) as {
-      workspace: { slug: string; billing: { seatLimit: number } };
+      workspace: {
+        slug: string;
+        billing: { planId: string; monthlyPriceUsd: number; seatLimit: number | null };
+      };
     };
     const slug = createdJson.workspace.slug;
-    expect(createdJson.workspace.billing.seatLimit).toBe(25);
+    expect(createdJson.workspace.billing.planId).toBe("free_forever");
+    expect(createdJson.workspace.billing.monthlyPriceUsd).toBe(0);
+    expect(createdJson.workspace.billing.seatLimit).toBeNull();
 
     const rows25 = Array.from({ length: 25 }, (_, i) =>
       `Worker ${i + 1}\t+15125551${String(i).padStart(3, "0")}\tBoss\t+15125550000\tOSHA 10\tC-${i}\t2027-09-01`,
@@ -237,7 +242,7 @@ describe("End-to-end Hono API & SMB 25-seat limit", () => {
     );
     expect(import25Res.status).toBe(200);
 
-    // 26th employee must trigger 409 SEAT_LIMIT_REACHED
+    // 26th employee succeeds immediately for free
     const emp26Res = await app.fetch(
       new Request(`http://localhost/api/workspaces/${slug}/employees`, {
         method: "POST",
@@ -250,35 +255,24 @@ describe("End-to-end Hono API & SMB 25-seat limit", () => {
         }),
       }),
     );
-    expect(emp26Res.status).toBe(409);
+    expect(emp26Res.status).toBe(201);
 
-    // Upgrade to Growth 50 via self-serve checkout -> 26th succeeds
-    const checkoutRes = await app.fetch(
-      new Request(`http://localhost/api/workspaces/${slug}/billing/checkout`, {
+    // Malformed JSON returns 400 and path traversal on /files is rejected
+    const badJsonRes = await app.fetch(
+      new Request("http://localhost/api/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planId: "smb_growth_50",
-          billingEmail: "owner@lonestar.example",
-          cardNumber: "4242424242424242",
-        }),
+        body: "{bad json",
       }),
     );
-    expect(checkoutRes.status).toBe(200);
+    expect(badJsonRes.status).toBe(400);
 
-    const emp26AfterUpgrade = await app.fetch(
-      new Request(`http://localhost/api/workspaces/${slug}/employees`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: "Worker 26",
-          phone: "+15125559999",
-          supervisorName: "Boss",
-          supervisorPhone: "+15125550000",
-        }),
-      }),
+    const traversalRes = await app.fetch(
+      new Request(
+        `http://localhost/api/workspaces/${slug}/files?key=${encodeURIComponent(`certpulse/media/${slug}/../../secret.json`)}`,
+      ),
     );
-    expect(emp26AfterUpgrade.status).toBe(201);
+    expect(traversalRes.status).toBe(400);
 
     // Cron sweep rejects bad secret and passes valid CRON_SECRET
     const badCron = await app.fetch(

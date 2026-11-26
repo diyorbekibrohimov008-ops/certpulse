@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   BellRing,
   CheckCircle2,
-  Clock,
   Mail,
   MessageSquare,
   Play,
@@ -55,7 +54,7 @@ export function AlertsConsole({
     try {
       const res = await onRunSweep();
       setNotice(
-        `Sweep completed: ${res.dispatchedCount} alert notification(s) dispatched to workers & supervisors (${res.skippedDeduplicated} already sent this cycle).`,
+        `Sent ${res.dispatchedCount} reminder(s) to employees and supervisors (${res.skippedDeduplicated} already sent earlier).`,
       );
     } finally {
       setSweeping(false);
@@ -67,7 +66,7 @@ export function AlertsConsole({
     setNotice(null);
     try {
       await onSaveRules(rules);
-      setNotice("60 / 30 / 7-day escalation schedule saved.");
+      setNotice("Reminder schedule saved.");
     } finally {
       setSaving(false);
     }
@@ -76,23 +75,19 @@ export function AlertsConsole({
   async function handleReset() {
     setNotice(null);
     await onResetRules();
-    setNotice("Restored default 60 / 30 / 7 / Expired escalation templates.");
+    setNotice("Restored default 60, 30, and 7-day reminder messages.");
   }
 
   return (
     <div className="space-y-6">
-      {/* Top Sweep Banner */}
-      <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center">
+      {/* Top Action Bar */}
+      <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-            <Clock className="h-3.5 w-3.5" />
-            <span>24/7 Automated Schedule: Daily 13:00 UTC + Instant Manual Trigger</span>
-          </div>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">
-            60 / 30 / 7-Day Escalating Worker & Supervisor Alerts
+          <h2 className="text-lg font-bold text-slate-950">
+            Automatic expiry reminders
           </h2>
-          <p className="text-xs text-slate-500">
-            Sends deduplicated reminders to both employee mobile phones and supervisor CCs until a new card photo resets the expiry date.
+          <p className="mt-0.5 text-xs text-slate-500">
+            CertPulse checks your roster every day and alerts employees and their supervisors at 60, 30, and 7 days before a card expires.
           </p>
         </div>
 
@@ -100,31 +95,27 @@ export function AlertsConsole({
           type="button"
           onClick={handleRunSweep}
           disabled={sweeping}
-          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#0f766e] px-4 py-2.5 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
         >
-          <Play className="h-3.5 w-3.5 text-emerald-400" />
-          <span>{sweeping ? "Running Escalation Sweep…" : "Run 60/30/7 Sweep Now"}</span>
+          <Play className="h-3.5 w-3.5" />
+          <span>{sweeping ? "Sending reminders…" : "Send due reminders now"}</span>
         </button>
       </div>
 
       {notice && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-900">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+        <div className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs font-semibold text-teal-950">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-[#0f766e]" />
           <span>{notice}</span>
         </div>
       )}
 
-      {/* Escalation Rules Editor */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      {/* Reminder Schedule Cards */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Pre-Configured Cadence Rules</h3>
+            <h3 className="text-sm font-bold text-slate-950">When reminders go out</h3>
             <p className="text-xs text-slate-500">
-              Variables supported:{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">{"{{employeeName}}"}</code>{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">{"{{certName}}"}</code>{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">{"{{expiryDate}}"}</code>{" "}
-              <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">{"{{uploadUrl}}"}</code>
+              Choose who gets notified and edit the message text for each step.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -134,16 +125,16 @@ export function AlertsConsole({
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Reset Defaults</span>
+              <span>Reset defaults</span>
             </button>
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0f766e] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" />
-              <span>{saving ? "Saving…" : "Save Rules"}</span>
+              <span>{saving ? "Saving…" : "Save schedule"}</span>
             </button>
           </div>
         </div>
@@ -153,13 +144,13 @@ export function AlertsConsole({
             <div
               key={rule.id}
               className={`rounded-xl border p-4 transition ${
-                rule.enabled ? "border-slate-200 bg-slate-50/40" : "border-slate-100 bg-slate-50 opacity-60"
+                rule.enabled ? "border-slate-200 bg-[#f7f8fa]" : "border-slate-100 bg-slate-50 opacity-60"
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-white">
-                    {rule.daysBefore === 0 ? "EXPIRED" : `${rule.daysBefore}D`}
+                  <span className="rounded-md bg-slate-900 px-2 py-0.5 font-mono text-xs font-semibold text-white">
+                    {rule.daysBefore === 0 ? "Expired" : `${rule.daysBefore} days`}
                   </span>
                   <span className="text-sm font-semibold text-slate-900">{rule.label}</span>
                 </div>
@@ -174,9 +165,9 @@ export function AlertsConsole({
                         ),
                       )
                     }
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                    className="h-4 w-4 rounded border-slate-300 text-[#0f766e]"
                   />
-                  <span>Enabled</span>
+                  <span>On</span>
                 </label>
               </div>
 
@@ -193,7 +184,7 @@ export function AlertsConsole({
                       )
                     }
                   />
-                  <span>Worker Direct</span>
+                  <span>Employee</span>
                 </label>
                 <label className="inline-flex items-center gap-1.5">
                   <input
@@ -215,7 +206,7 @@ export function AlertsConsole({
                     checked={rule.channels.includes("sms")}
                     onChange={() => toggleChannel(rule.id, "sms")}
                   />
-                  <span>SMS</span>
+                  <span>Text (SMS)</span>
                 </label>
                 <label className="inline-flex items-center gap-1.5">
                   <input
@@ -237,38 +228,38 @@ export function AlertsConsole({
                     ),
                   )
                 }
-                className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600"
+                className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
               />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Dispatched Outbox */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      {/* Sent Reminders Log */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
           <div className="flex items-center gap-2">
-            <BellRing className="h-4 w-4 text-blue-600" />
-            <h3 className="text-sm font-bold text-slate-900">
-              Worker & Supervisor Notification Log ({workspace.alertDeliveries.length})
+            <BellRing className="h-4 w-4 text-[#0f766e]" />
+            <h3 className="text-sm font-bold text-slate-950">
+              Sent reminder log ({workspace.alertDeliveries.length})
             </h3>
           </div>
           <span className="text-xs text-slate-500">
             {workspace.integrations.hasTwilioConfig && workspace.integrations.hasResendConfig
-              ? "Live Twilio SMS + Resend Email Active"
-              : "Sandbox Delivery Outbox (Ready for Twilio / Resend Keys)"}
+              ? "Live SMS & Email connected"
+              : "Test outbox mode (connect Twilio / Resend anytime)"}
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-            <thead className="bg-slate-50 font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="bg-[#f7f8fa] font-semibold text-slate-600">
               <tr>
-                <th className="px-4 py-2.5">Tier</th>
-                <th className="px-4 py-2.5">Recipient</th>
-                <th className="px-4 py-2.5">Channel</th>
-                <th className="px-4 py-2.5">Cert & Expiry</th>
-                <th className="px-4 py-2.5">Message Delivered</th>
+                <th className="px-4 py-2.5">Timing</th>
+                <th className="px-4 py-2.5">Sent to</th>
+                <th className="px-4 py-2.5">Method</th>
+                <th className="px-4 py-2.5">Safety card</th>
+                <th className="px-4 py-2.5">Message</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -276,23 +267,23 @@ export function AlertsConsole({
                 <tr key={item.id} className="hover:bg-slate-50/70">
                   <td className="px-4 py-3 align-top">
                     <span
-                      className={`inline-block rounded px-2 py-0.5 font-mono text-[11px] font-bold ${
+                      className={`inline-block rounded px-2 py-0.5 font-mono text-[11px] font-semibold ${
                         item.tierDays === 0
                           ? "bg-rose-100 text-rose-800"
                           : item.tierDays <= 7
                             ? "bg-orange-100 text-orange-800"
                             : item.tierDays <= 30
                               ? "bg-amber-100 text-amber-800"
-                              : "bg-blue-100 text-blue-800"
+                              : "bg-teal-100 text-teal-800"
                       }`}
                     >
-                      {item.tierDays === 0 ? "EXPIRED" : `${item.tierDays}D`}
+                      {item.tierDays === 0 ? "Expired" : `${item.tierDays}d`}
                     </span>
                   </td>
 
                   <td className="px-4 py-3 align-top">
                     <div className="font-semibold text-slate-900">{item.recipientName}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       <span
                         className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                           item.recipientRole === "supervisor"
@@ -300,7 +291,7 @@ export function AlertsConsole({
                             : "bg-slate-100 text-slate-700"
                         }`}
                       >
-                        {item.recipientRole === "supervisor" ? "Supervisor CC" : "Worker"}
+                        {item.recipientRole === "supervisor" ? "Supervisor" : "Employee"}
                       </span>
                       <span className="font-mono text-[11px] text-slate-500">
                         {item.recipientContact}
@@ -311,21 +302,18 @@ export function AlertsConsole({
                   <td className="px-4 py-3 align-top">
                     <span className="inline-flex items-center gap-1 font-semibold uppercase text-slate-700">
                       {item.channel === "sms" ? (
-                        <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
+                        <MessageSquare className="h-3.5 w-3.5 text-[#0f766e]" />
                       ) : (
-                        <Mail className="h-3.5 w-3.5 text-emerald-600" />
+                        <Mail className="h-3.5 w-3.5 text-slate-600" />
                       )}
                       {item.channel}
                     </span>
-                    <div className="text-[10px] text-slate-400">
-                      {item.deliveryMode === "sandbox_outbox" ? "Sandbox Outbox" : item.deliveryMode}
-                    </div>
                   </td>
 
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium text-slate-900">{item.certName}</div>
                     <div className="font-mono text-[11px] text-slate-500">
-                      Exp: {item.expiryDate}
+                      Expires {item.expiryDate}
                     </div>
                   </td>
 

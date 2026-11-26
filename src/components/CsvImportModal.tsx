@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, X } from "lucide-react";
 import { parseSpreadsheetInput } from "../lib/csv-importer";
 import { buildSampleSpreadsheetTsv } from "../lib/seed";
 
 interface CsvImportModalProps {
   currentSeatCount: number;
-  seatLimit: number;
   onClose: () => void;
   onImport: (rawText: string) => Promise<{
     addedEmployees: number;
@@ -16,7 +15,6 @@ interface CsvImportModalProps {
 
 export function CsvImportModal({
   currentSeatCount,
-  seatLimit,
   onClose,
   onImport,
 }: CsvImportModalProps) {
@@ -24,6 +22,18 @@ export function CsvImportModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, [onClose]);
 
   const preview = useMemo(() => {
     if (!rawText.trim()) return null;
@@ -50,9 +60,9 @@ export function CsvImportModal({
     try {
       const res = await onImport(rawText);
       setResultMsg(
-        `Imported ${res.addedEmployees} new employee(s), ${res.addedCertifications} new certification(s), and updated ${res.updatedCertifications} existing card(s).`,
+        `Added ${res.addedEmployees} employee(s), ${res.addedCertifications} new card(s), and updated ${res.updatedCertifications} existing card(s).`,
       );
-      setTimeout(onClose, 900);
+      closeTimerRef.current = setTimeout(onClose, 900);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Spreadsheet import failed.");
     } finally {
@@ -66,29 +76,28 @@ export function CsvImportModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+        className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+            <div className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800">
               <FileSpreadsheet className="h-3.5 w-3.5" />
-              <span>Ditch Manual Spreadsheets in 30 Seconds</span>
+              <span>Import from Excel or Google Sheets</span>
             </div>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">
-              Paste Directly From Excel / Google Sheets or Upload CSV
+            <h2 className="mt-2 text-lg font-bold text-slate-950">
+              Paste your team list or upload a CSV file
             </h2>
             <p className="text-xs text-slate-500">
-              Supports tab-separated Excel copy-paste and CSV. Currently using{" "}
-              <span className="font-semibold text-slate-800">
-                {currentSeatCount}/{seatLimit}
-              </span>{" "}
-              included seats.
+              Currently tracking{" "}
+              <span className="font-semibold text-slate-800">{currentSeatCount}</span>{" "}
+              employees — unlimited people included free.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close import modal"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-4 w-4" />
@@ -100,14 +109,14 @@ export function CsvImportModal({
             <button
               type="button"
               onClick={() => setRawText(buildSampleSpreadsheetTsv())}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              className="rounded-lg border border-slate-200 bg-[#f7f8fa] px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
             >
-              Load Sample 4-Worker Excel Paste
+              Try sample 4-person spreadsheet
             </button>
 
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-              <Upload className="h-3.5 w-3.5 text-blue-600" />
-              <span>Choose .csv / .tsv File</span>
+              <Upload className="h-3.5 w-3.5 text-[#0f766e]" />
+              <span>Choose .csv / .tsv file</span>
               <input
                 type="file"
                 accept=".csv,.tsv,.txt"
@@ -122,15 +131,14 @@ export function CsvImportModal({
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Paste header + rows here (Employee Name, Phone, Supervisor Name, Supervisor Phone, Certification, Card #, Expiry Date)…"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:border-sky-600 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600"
+            className="w-full rounded-lg border border-slate-200 bg-[#f7f8fa] p-3 font-mono text-xs text-slate-900 focus:border-[#0f766e] focus:bg-white"
           />
 
           {preview && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+            <div className="rounded-lg border border-slate-200 bg-[#f7f8fa] p-3 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold text-slate-800">
-                  Detected {preview.delimiter.toUpperCase()} · {preview.rows.length} valid row(s) across{" "}
-                  {preview.uniqueEmployeeCount} unique worker(s)
+                  Found {preview.rows.length} valid row(s) for {preview.uniqueEmployeeCount} employee(s)
                 </span>
                 {preview.errors.length > 0 && (
                   <span className="font-semibold text-rose-700">
@@ -142,8 +150,7 @@ export function CsvImportModal({
                 <div className="mt-2 max-h-28 space-y-1 overflow-y-auto font-mono text-[11px] text-slate-600">
                   {preview.rows.slice(0, 5).map((r) => (
                     <div key={r.rowIndex}>
-                      Row {r.rowIndex}: {r.fullName} · {r.certName} · Exp {r.expiryDate} · Sup:{" "}
-                      {r.supervisorName}
+                      Row {r.rowIndex}: {r.fullName} — {r.certName} (Expires {r.expiryDate})
                     </div>
                   ))}
                 </div>
@@ -166,8 +173,8 @@ export function CsvImportModal({
           )}
 
           {resultMsg && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <div className="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-900">
+              <CheckCircle2 className="h-4 w-4 text-[#0f766e]" />
               <span>{resultMsg}</span>
             </div>
           )}
@@ -183,9 +190,9 @@ export function CsvImportModal({
             <button
               type="submit"
               disabled={busy || !preview || preview.rows.length === 0}
-              className="rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+              className="rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
             >
-              {busy ? "Importing…" : `Import ${preview?.rows.length ?? 0} Rows & Enable Alerts`}
+              {busy ? "Importing…" : `Import ${preview?.rows.length ?? 0} row(s)`}
             </button>
           </div>
         </form>

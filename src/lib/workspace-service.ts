@@ -53,6 +53,19 @@ export function slugifyCompanyName(name: string): string {
 function hydrateWorkspace(ws: Workspace): Workspace {
   return {
     ...ws,
+    billing: {
+      ...ws.billing,
+      planId: "free_forever",
+      planName: "Free Forever ($0/mo)",
+      monthlyPriceUsd: 0,
+      seatLimit: null,
+      status: "active",
+      cardBrand: null,
+      cardLast4: null,
+      currentPeriodEnd: "never",
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+    },
     integrations: readLiveIntegrationFlags(),
   };
 }
@@ -73,8 +86,9 @@ export async function listWorkspaceSummaries(
   const loaded = await Promise.all(keys.map((k) => storage.getJson<Workspace>(k)));
 
   const summaries: WorkspaceSummary[] = [];
-  for (const ws of loaded) {
-    if (!ws) continue;
+  for (const raw of loaded) {
+    if (!raw) continue;
+    const ws = hydrateWorkspace(raw);
     summaries.push({
       id: ws.id,
       slug: ws.slug,
@@ -172,15 +186,6 @@ export async function addEmployeeToWorkspace(
   },
 ): Promise<{ workspace: Workspace; employee: Employee; certification: Certification | null }> {
   const ws = await getWorkspace(storage, slug);
-  const activeCount = ws.employees.filter((e) => e.active).length;
-
-  if (activeCount >= ws.billing.seatLimit) {
-    throw new AppError(
-      409,
-      `Seat limit reached (${activeCount}/${ws.billing.seatLimit} active employees on ${ws.billing.planName}). Upgrade your plan to add more crew members.`,
-      "SEAT_LIMIT_REACHED",
-    );
-  }
 
   const nowIso = new Date().toISOString();
   const slugTag = input.fullName.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".");
@@ -390,22 +395,6 @@ export async function importSpreadsheetToWorkspace(
         (cleanPhone.length >= 10 && normalizePhone(e.phone) === cleanPhone),
     );
   };
-
-  const newEmployeeKeys = new Set<string>();
-  for (const row of parsed.rows) {
-    if (!findExistingEmployee(row.fullName, row.phone)) {
-      newEmployeeKeys.add(`${row.fullName.trim().toLowerCase()}::${normalizePhone(row.phone)}`);
-    }
-  }
-
-  const activeCount = ws.employees.filter((e) => e.active).length;
-  if (activeCount + newEmployeeKeys.size > ws.billing.seatLimit) {
-    throw new AppError(
-      409,
-      `Spreadsheet adds ${newEmployeeKeys.size} new employees (${activeCount}/${ws.billing.seatLimit} seats already used), exceeding your ${ws.billing.seatLimit}-employee SMB limit. Switch to Growth (50 seats) or trim rows.`,
-      "SEAT_LIMIT_REACHED",
-    );
-  }
 
   const nowIso = new Date().toISOString();
   let addedEmployees = 0;
@@ -740,58 +729,6 @@ export async function updateWorkspaceAlertRules(
   return saveWorkspace(storage, ws);
 }
 
-export async function activateSelfServePlan(
-  storage: StorageAdapter,
-  slug: string,
-  input: {
-    planId: "smb_25" | "smb_growth_50";
-    billingEmail: string;
-    cardNumber: string;
-    cardBrand?: string;
-    expiry?: string;
-    cvc?: string;
-  },
-): Promise<Workspace> {
-  const ws = await getWorkspace(storage, slug);
-  const digits = input.cardNumber.replace(/\D/g, "");
-  if (digits.length < 12) {
-    throw new AppError(400, "Please enter a valid 16-digit card number.", "INVALID_CARD");
-  }
-
-  const last4 = digits.slice(-4);
-  const inferredBrand =
-    input.cardBrand ||
-    (digits.startsWith("4")
-      ? "Visa"
-      : digits.startsWith("5")
-        ? "Mastercard"
-        : digits.startsWith("3")
-          ? "Amex"
-          : "Card");
-
-  const isGrowth = input.planId === "smb_growth_50";
-  const now = new Date();
-  const nextMonth = addDaysToIsoDate(toIsoDateString(now), 30);
-
-  ws.billing = {
-    ...ws.billing,
-    planId: input.planId,
-    planName: isGrowth ? "Growth Multi-Crew ($59/mo)" : "SMB Flat Plan ($29/mo)",
-    monthlyPriceUsd: isGrowth ? 59 : 29,
-    seatLimit: isGrowth ? 50 : 25,
-    status: "active",
-    cardBrand: inferredBrand,
-    cardLast4: last4,
-    billingEmail: input.billingEmail.trim() || ws.billing.billingEmail,
-    setupCompletedAt: ws.billing.setupCompletedAt ?? now.toISOString(),
-    currentPeriodEnd: nextMonth,
-    stripeCustomerId: ws.billing.stripeCustomerId ?? `cus_${crypto.randomUUID().slice(0, 10)}`,
-    stripeSubscriptionId: ws.billing.stripeSubscriptionId ?? `sub_${crypto.randomUUID().slice(0, 10)}`,
-  };
-
-  return saveWorkspace(storage, ws);
-}
-
 export async function resolveMobilePortalByToken(
   storage: StorageAdapter,
   token: string,
@@ -832,10 +769,11 @@ export async function findWorkspaceByPhone(
 }
 
 function escapeCsvCell(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const safe = /^[=@\t\r]/.test(value) ? `'${value}` : value;
+  if (/[",\n\r]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 export function exportWorkspaceToCsv(workspace: Workspace): string {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   Camera,
@@ -28,7 +28,7 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
   const [busyStatus, setBusyStatus] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  async function loadPortal() {
+  const loadPortal = useCallback(async (resetSelection = false) => {
     setLoading(true);
     setError(null);
     try {
@@ -37,49 +37,52 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
       setPortalSmsNumber(data.portalSmsNumber);
       setEmployee(data.employee);
       setCertifications(data.certifications);
-      if (data.certifications[0] && !selectedCertId) {
-        setSelectedCertId(data.certifications[0].id);
-      }
+      setSelectedCertId((prev) => {
+        if (!resetSelection && prev && data.certifications.some((c) => c.id === prev)) {
+          return prev;
+        }
+        return data.certifications[0]?.id ?? "";
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load mobile upload portal.");
+      setError(err instanceof Error ? err.message : "Could not load mobile upload page.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [token]);
 
   useEffect(() => {
-    void loadPortal();
-  }, [token]);
+    void loadPortal(true);
+  }, [loadPortal]);
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !employee) return;
     setError(null);
     setSuccessMsg(null);
-    setBusyStatus("Scanning card pixels with OCR…");
+    setBusyStatus("Reading expiry date from your card…");
 
     let ocrText = "";
     try {
       ocrText = await runBrowserTesseractOcr(file, (pct) => {
-        setBusyStatus(`Scanning photo OCR (${pct}%)…`);
+        setBusyStatus(`Scanning photo (${pct}%)…`);
       });
     } catch {
       // Server pattern / Vision AI handles extraction if offline
     }
 
-    setBusyStatus("Uploading & updating compliance record…");
+    setBusyStatus("Uploading and saving your renewed card…");
     try {
       const form = new FormData();
       form.append("photo", file);
       if (selectedCertId) form.append("certificationId", selectedCertId);
       if (ocrText) form.append("rawOcrText", ocrText);
-      form.append("messageText", "Uploaded via worker mobile portal link");
+      form.append("messageText", "Uploaded via worker mobile link");
 
       const res = await apiClient.submitMobileRenewal(token, form);
       setSuccessMsg(
-        `Verified! ${res.certification.certName} updated with new expiry ${res.certification.expiryDate}.`,
+        `All set! ${res.certification.certName} is updated with new expiry ${res.certification.expiryDate}.`,
       );
-      await loadPortal();
+      await loadPortal(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -88,19 +91,19 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 px-4 py-8 text-slate-900">
-      <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-slate-700 bg-white shadow-2xl">
-        <div className="bg-slate-950 px-5 py-4 text-white">
+    <div className="min-h-screen bg-[#f7f8fa] px-4 py-8 text-slate-900">
+      <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-[#0f766e] px-5 py-4 text-white">
           <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={onExitPortal}
-              className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700"
+              className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/25"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Admin View</span>
+              <span>Back to roster</span>
             </button>
-            <div className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
+            <div className="inline-flex items-center gap-1 text-xs font-semibold text-teal-100">
               <ShieldCheck className="h-4 w-4" />
               <span>CertPulse Mobile</span>
             </div>
@@ -108,12 +111,10 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
 
           {!loading && employee && (
             <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                {companyName}
-              </p>
+              <p className="text-xs font-medium text-teal-100">{companyName}</p>
               <h1 className="mt-0.5 text-xl font-bold">{employee.fullName}</h1>
-              <p className="text-xs text-slate-300">
-                {employee.roleTitle} · Or MMS photo directly to{" "}
+              <p className="text-xs text-teal-50">
+                {employee.roleTitle} — or text a photo to{" "}
                 <span className="font-mono font-semibold text-white">{portalSmsNumber}</span>
               </p>
             </div>
@@ -123,8 +124,8 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
         <div className="space-y-4 p-5">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-xs text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading worker credentials…</span>
+              <Loader2 className="h-4 w-4 animate-spin text-[#0f766e]" />
+              <span>Loading your safety cards…</span>
             </div>
           ) : error && !employee ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
@@ -133,8 +134,8 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
           ) : (
             <>
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  1. Select Credential to Renew
+                <h2 className="text-xs font-semibold text-slate-700">
+                  1. Choose the card you renewed
                 </h2>
                 <div className="mt-2 space-y-2">
                   {certifications.map((cert) => {
@@ -148,7 +149,7 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
                         onClick={() => setSelectedCertId(cert.id)}
                         className={`w-full rounded-xl border p-3 text-left transition ${
                           active
-                            ? "border-blue-600 bg-blue-50/50 ring-2 ring-blue-600/20"
+                            ? "border-[#0f766e] bg-teal-50/60 ring-2 ring-teal-600/20"
                             : "border-slate-200 hover:bg-slate-50"
                         }`}
                       >
@@ -164,14 +165,14 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
                                   ? "bg-orange-100 text-orange-800"
                                   : meta.tone === "amber"
                                     ? "bg-amber-100 text-amber-800"
-                                    : "bg-emerald-100 text-emerald-800"
+                                    : "bg-teal-100 text-teal-800"
                             }`}
                           >
                             {meta.shortLabel}
                           </span>
                         </div>
                         <div className="mt-1 font-mono text-xs text-slate-500">
-                          Card #{cert.certificateNumber} · Exp {cert.expiryDate}
+                          Card #{cert.certificateNumber} — Expires {cert.expiryDate}
                         </div>
                       </button>
                     );
@@ -179,18 +180,18 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-dashed border-blue-300 bg-blue-50/50 p-5 text-center">
-                <Camera className="mx-auto h-7 w-7 text-blue-700" />
-                <p className="mt-2 text-sm font-bold text-slate-900">
-                  2. Take Photo of Renewed Card
+              <div className="rounded-xl border border-dashed border-teal-300 bg-teal-50/40 p-5 text-center">
+                <Camera className="mx-auto h-7 w-7 text-[#0f766e]" />
+                <p className="mt-2 text-sm font-bold text-slate-950">
+                  2. Take a photo of your new card
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  AI OCR reads the new expiry date automatically — no manual typing needed.
+                <p className="mt-1 text-xs text-slate-600">
+                  We read the new expiry date automatically — no typing needed.
                 </p>
 
-                <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-700 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-800">
+                <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#0f766e] px-5 py-2.5 text-xs font-semibold text-white hover:bg-teal-800">
                   <Upload className="h-4 w-4" />
-                  <span>{busyStatus ? "Processing…" : "Snap / Choose Card Photo"}</span>
+                  <span>{busyStatus ? "Uploading…" : "Take or choose photo"}</span>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -203,8 +204,8 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
               </div>
 
               {busyStatus && (
-                <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-xs font-semibold text-blue-800">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-3 py-2.5 text-xs font-semibold text-teal-900">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#0f766e]" />
                   <span>{busyStatus}</span>
                 </div>
               )}
@@ -216,8 +217,8 @@ export function MobileWorkerPortal({ token, onExitPortal }: MobileWorkerPortalPr
               )}
 
               {successMsg && (
-                <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs font-semibold text-emerald-900">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <div className="flex items-start gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-3 text-xs font-semibold text-teal-900">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#0f766e]" />
                   <span>{successMsg}</span>
                 </div>
               )}

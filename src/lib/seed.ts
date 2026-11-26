@@ -17,7 +17,6 @@ export function readLiveIntegrationFlags(): WorkspaceIntegrations {
   const twilioFrom = process.env.TWILIO_FROM_NUMBER || "+15125550190";
   const resendKey = process.env.RESEND_API_KEY;
   const visionKey = process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
 
   return {
     portalSmsNumber: twilioFrom,
@@ -25,7 +24,6 @@ export function readLiveIntegrationFlags(): WorkspaceIntegrations {
     hasTwilioConfig: Boolean(twilioSid && twilioToken && process.env.TWILIO_FROM_NUMBER),
     hasResendConfig: Boolean(resendKey),
     hasVisionAiConfig: Boolean(visionKey),
-    hasStripeConfig: Boolean(stripeKey),
   };
 }
 
@@ -514,17 +512,17 @@ export function createDemoWorkspace(referenceDate = new Date()): Workspace {
     createdAt: nowIso,
     updatedAt: nowIso,
     billing: {
-      planId: "trial_smb",
-      planName: "SMB Flat Plan (14-Day Trial)",
-      monthlyPriceUsd: 29,
-      seatLimit: 25,
-      status: "trialing",
+      planId: "free_forever",
+      planName: "Free Forever ($0/mo)",
+      monthlyPriceUsd: 0,
+      seatLimit: null,
+      status: "active",
       cardBrand: null,
       cardLast4: null,
-      billingEmail: "ap@summitmechanical.example",
+      billingEmail: "safety@summitmechanical.example",
       setupCompletedAt: nowIso,
       setupDurationSeconds: 185,
-      currentPeriodEnd: offset(14),
+      currentPeriodEnd: "never",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
     },
@@ -555,17 +553,17 @@ export function createFreshWorkspace(params: {
     createdAt: nowIso,
     updatedAt: nowIso,
     billing: {
-      planId: "trial_smb",
-      planName: "SMB Flat Plan (14-Day Trial)",
-      monthlyPriceUsd: 29,
-      seatLimit: 25,
-      status: "trialing",
+      planId: "free_forever",
+      planName: "Free Forever ($0/mo)",
+      monthlyPriceUsd: 0,
+      seatLimit: null,
+      status: "active",
       cardBrand: null,
       cardLast4: null,
       billingEmail: params.billingEmail.trim(),
       setupCompletedAt: nowIso,
       setupDurationSeconds: params.setupDurationSeconds ?? 210,
-      currentPeriodEnd: addDaysToIsoDate(toIsoDateString(now), 14),
+      currentPeriodEnd: "never",
       stripeCustomerId: null,
       stripeSubscriptionId: null,
     },

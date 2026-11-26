@@ -4,7 +4,6 @@ import { computeWorkspaceMetrics } from "../src/lib/compliance";
 import { DEFAULT_ALERT_RULES } from "../src/lib/alerts";
 import { getStorage } from "../src/lib/storage";
 import {
-  activateSelfServePlan,
   addEmployeeToWorkspace,
   AppError,
   createWorkspaceRecord,
@@ -113,14 +112,13 @@ const updateRulesSchema = z.object({
   rules: z.array(alertRuleSchema).min(1).max(10),
 });
 
-const checkoutSchema = z.object({
-  planId: z.enum(["smb_25", "smb_growth_50"]),
-  billingEmail: z.string().email(),
-  cardNumber: z.string().min(12).max(24),
-  cardBrand: z.string().max(32).optional(),
-  expiry: z.string().max(10).optional(),
-  cvc: z.string().max(6).optional(),
-});
+async function readJsonBody<T = unknown>(req: Request): Promise<T> {
+  try {
+    return (await req.json()) as T;
+  } catch {
+    throw new AppError(400, "Invalid JSON request body.", "INVALID_JSON");
+  }
+}
 
 function getRequestBaseUrl(req: Request): string {
   try {
@@ -189,7 +187,7 @@ async function parseSubmissionPayload(req: Request): Promise<{
     };
   }
 
-  const body = (await req.json()) as {
+  const body = await readJsonBody<{
     employeeId?: string;
     uploadToken?: string;
     fromPhone?: string;
@@ -201,7 +199,7 @@ async function parseSubmissionPayload(req: Request): Promise<{
     overrideCertificateNumber?: string;
     imageBase64?: string;
     mimeType?: string;
-  };
+  }>(req);
 
   let imageBytes: Uint8Array | undefined;
   if (body.imageBase64) {
@@ -266,7 +264,7 @@ app.get("/workspaces", async (c) => {
 });
 
 app.post("/workspaces", async (c) => {
-  const payload = createWorkspaceSchema.parse(await c.req.json());
+  const payload = createWorkspaceSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const workspace = await createWorkspaceRecord(storage, payload);
   return c.json(
@@ -288,7 +286,7 @@ app.get("/workspaces/:slug", async (c) => {
 });
 
 app.post("/workspaces/:slug/employees", async (c) => {
-  const payload = addEmployeeSchema.parse(await c.req.json());
+  const payload = addEmployeeSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const result = await addEmployeeToWorkspace(storage, c.req.param("slug"), {
     ...payload,
@@ -308,7 +306,7 @@ app.post("/workspaces/:slug/employees", async (c) => {
 });
 
 app.patch("/workspaces/:slug/employees/:id", async (c) => {
-  const patch = updateEmployeeSchema.parse(await c.req.json());
+  const patch = updateEmployeeSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const workspace = await updateEmployeeInWorkspace(
     storage,
@@ -336,7 +334,7 @@ app.delete("/workspaces/:slug/employees/:id", async (c) => {
 });
 
 app.post("/workspaces/:slug/certifications", async (c) => {
-  const payload = upsertCertSchema.parse(await c.req.json());
+  const payload = upsertCertSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const result = await upsertCertificationInWorkspace(
     storage,
@@ -353,7 +351,7 @@ app.post("/workspaces/:slug/certifications", async (c) => {
 });
 
 app.post("/workspaces/:slug/import", async (c) => {
-  const payload = importCsvSchema.parse(await c.req.json());
+  const payload = importCsvSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const result = await importSpreadsheetToWorkspace(
     storage,
@@ -419,7 +417,7 @@ app.post("/workspaces/:slug/alerts/sweep", async (c) => {
 });
 
 app.patch("/workspaces/:slug/alerts/rules", async (c) => {
-  const payload = updateRulesSchema.parse(await c.req.json());
+  const payload = updateRulesSchema.parse(await readJsonBody(c.req.raw));
   const storage = getStorage();
   const workspace = await updateWorkspaceAlertRules(
     storage,
@@ -437,37 +435,31 @@ app.post("/workspaces/:slug/alerts/reset-defaults", async (c) => {
   return c.json({ workspace });
 });
 
-app.post("/workspaces/:slug/billing/checkout", async (c) => {
-  const payload = checkoutSchema.parse(await c.req.json());
-  const storage = getStorage();
-  const workspace = await activateSelfServePlan(
-    storage,
-    c.req.param("slug"),
-    payload,
-  );
-  return c.json({
-    workspace,
-    metrics: computeWorkspaceMetrics(workspace.employees, workspace.certifications),
-  });
-});
-
 app.get("/workspaces/:slug/export.csv", async (c) => {
   const storage = getStorage();
   const ws = await getWorkspace(storage, c.req.param("slug"));
   const csv = exportWorkspaceToCsv(ws);
+  const safeSlug = ws.slug.replace(/[^a-zA-Z0-9_-]/g, "") || "workspace";
   return new Response(csv, {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${ws.slug}-compliance.csv"`,
+      "Content-Disposition": `attachment; filename="${safeSlug}-compliance.csv"`,
     },
   });
 });
 
 app.get("/workspaces/:slug/files", async (c) => {
   const key = c.req.query("key");
-  const slug = c.req.param("slug");
-  if (!key || !key.startsWith(`certpulse/media/${slug}/`)) {
+  const slug = c.req.param("slug").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (
+    !key ||
+    !slug ||
+    key.includes("..") ||
+    key.includes("\\") ||
+    key.includes("\0") ||
+    !key.startsWith(`certpulse/media/${slug}/`)
+  ) {
     return c.json({ error: "Invalid media key for workspace." }, 400);
   }
   const storage = getStorage();

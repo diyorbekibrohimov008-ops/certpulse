@@ -95,11 +95,11 @@ export interface SmsMessage {
 }
 
 export interface BillingInfo {
-  planId: "trial_smb" | "smb_25" | "smb_growth_50";
+  planId: "free_forever";
   planName: string;
   monthlyPriceUsd: number;
-  seatLimit: number;
-  status: "trialing" | "active" | "past_due";
+  seatLimit: number | null;
+  status: "active";
   cardBrand: string | null;
   cardLast4: string | null;
   billingEmail: string;
@@ -116,7 +116,6 @@ export interface WorkspaceIntegrations {
   hasTwilioConfig: boolean;
   hasResendConfig: boolean;
   hasVisionAiConfig: boolean;
-  hasStripeConfig: boolean;
 }
 
 export interface Workspace {
@@ -142,7 +141,7 @@ export interface WorkspaceSummary {
   companyName: string;
   industry: string;
   seatCount: number;
-  seatLimit: number;
+  seatLimit: number | null;
   planName: string;
   monthlyPriceUsd: number;
 }

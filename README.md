@@ -1,10 +1,6 @@
-# CertPulse — Employee Certification & Compliance Alerts
+# CertPulse — Free Employee Certification & Compliance Alerts
 
-> Automated compliance monitoring, OCR renewals, and escalating alerts for SMB trade crews and field service teams.
-
-> [!WARNING]
-> **Project Status — Work in Progress (Not Fully Ready)**
-> This project is currently under active development and is **not fully ready for production**. Some parts, features, or workflow steps will fail or behave unexpectedly. We are actively working on fixing all remaining issues.
+> 100% free forever ($0/mo, unlimited employees). Automated safety card tracking, photo OCR renewals, and escalating expiry reminders for field teams and small businesses.
 
 Live Production URL: [https://certpulse-one.vercel.app](https://certpulse-one.vercel.app)
 
@@ -12,13 +8,13 @@ Live Production URL: [https://certpulse-one.vercel.app](https://certpulse-one.ve
 
 ## Overview
 
-CertPulse helps small-to-midsize businesses (HVAC contractors, electrical crews, general construction, plumbing, logistics) replace error-prone spreadsheets with automated compliance tracking:
+CertPulse helps field service teams, trade crews, and small businesses replace error-prone spreadsheets with simple, free certification tracking:
 
 - **Mobile Upload Portal**: Workers take a photo of renewal cards (CPR, OSHA, CDL, Forklift, EPA 608) on their phones. Built-in OCR detects expiration dates automatically.
 - **Escalating Alerts**: Automated notices delivered at 60, 30, and 7-day intervals to both worker and supervisor.
-- **Self-Serve SMB Pricing**: Flat rate for up to 25 seats with zero enterprise setup fees.
+- **100% Free Forever**: No monthly subscription, no seat limits, no trials, and no credit card required.
 - **Spreadsheet Importer**: Paste tab-delimited or comma-delimited rosters directly from Excel or Google Sheets.
-- **Audit Export**: 1-click CSV export with compliance breakdown and penalty risk metrics.
+- **Audit Export**: 1-click CSV export with full employee and certification records.
 
 ---
 
