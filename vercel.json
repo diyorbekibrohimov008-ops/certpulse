@@ -32,7 +32,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index?__route=$1" },
+    { "source": "/api/(.*)", "destination": "/api/vercel?__route=$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "schedules": {
